@@ -1,55 +1,66 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const SITE_NAME = "TaxFlow";
-const TOOL_NAME = "Freelance Tax & Net Income Estimator";
+const APP_NAME = "TaskMatrix AI";
 const DESCRIPTION =
-  "Free Freelance Tax & Net Income Estimator. Instantly calculate quarterly tax liabilities, self-employment tax, deductions, effective tax rate, and net take-home pay for freelancers, contractors, and self-employed professionals.";
+  "TaskMatrix AI is a privacy-first, zero-server multi-tool suite that runs 100% in your browser: a local PDF & image redactor/anonymizer, a high-precision invoice & tax calculator, a real-time meeting cost ticker, and a JSON/CSV data sanitizer. No uploads, no tracking, no data ever leaves your device.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://taxflow.app"),
+  metadataBase: new URL("https://taskmatrix.ai"),
   title: {
-    default: `${TOOL_NAME} | ${SITE_NAME}`,
-    template: `%s | ${SITE_NAME}`,
+    default: `${APP_NAME} — Privacy-First Local PDF, Invoice, Meeting & Data Tools`,
+    template: `%s | ${APP_NAME}`,
   },
   description: DESCRIPTION,
+  applicationName: APP_NAME,
   keywords: [
-    "freelance tax calculator",
-    "self employment tax calculator",
-    "1099 tax calculator",
-    "quarterly estimated tax calculator",
-    "net income estimator",
-    "contractor take home pay",
-    "self employed tax deductions",
-    "QBI deduction calculator",
+    "local pdf redaction",
+    "browser pdf anonymizer",
+    "client side pdf editor",
+    "redact pii offline",
+    "invoice tax calculator",
+    "bignumber invoice math",
+    "meeting cost calculator",
+    "json to csv converter",
+    "csv to json parser",
+    "privacy first tools",
+    "no upload document tools",
   ],
-  authors: [{ name: SITE_NAME }],
-  alternates: {
-    canonical: "/",
-  },
+  authors: [{ name: APP_NAME }],
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: SITE_NAME,
-    title: `${TOOL_NAME} | ${SITE_NAME}`,
+    siteName: APP_NAME,
+    title: `${APP_NAME} — Privacy-First Local Multi-Tool Suite`,
     description: DESCRIPTION,
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: `${TOOL_NAME} | ${SITE_NAME}`,
+    title: `${APP_NAME} — Privacy-First Local Multi-Tool Suite`,
     description: DESCRIPTION,
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e62f0",
+  themeColor: "#6366f1",
   width: "device-width",
   initialScale: 1,
 };
+
+// Blocking script that applies the persisted theme before first paint to
+// prevent a flash of the wrong color scheme (FOUC) and layout shift.
+const themeInitScript = `
+(function () {
+  try {
+    var stored = localStorage.getItem('taskmatrix-theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var dark = stored ? stored === 'dark' : prefersDark;
+    if (dark) document.documentElement.classList.add('dark');
+  } catch (e) {}
+})();
+`;
 
 export default function RootLayout({
   children,
@@ -57,7 +68,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );

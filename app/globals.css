@@ -6,83 +6,89 @@
   color-scheme: light;
 }
 
+.dark {
+  color-scheme: dark;
+}
+
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased transition-colors duration-200;
 }
 
-/* ---------- Range slider styling (cross-browser) ---------- */
-input[type="range"].tf-range {
+.dark body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+/* ---------- Glassmorphism ---------- */
+.tm-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+}
+
+.dark .tm-glass {
+  background: rgba(15, 23, 42, 0.7);
+}
+
+/* ---------- Range slider ---------- */
+input[type="range"].tm-range {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 8px;
+  height: 6px;
   border-radius: 9999px;
-  background: linear-gradient(
-    to right,
-    #1e62f0 var(--tf-progress, 0%),
-    #e2e8f0 var(--tf-progress, 0%)
-  );
+  background: #e2e8f0;
   outline: none;
 }
 
-input[type="range"].tf-range:focus-visible {
-  box-shadow: 0 0 0 4px rgba(30, 98, 240, 0.25);
+.dark input[type="range"].tm-range {
+  background: #334155;
 }
 
-input[type="range"].tf-range::-webkit-slider-thumb {
+input[type="range"].tm-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 22px;
-  width: 22px;
+  height: 20px;
+  width: 20px;
   border-radius: 9999px;
-  background: #ffffff;
-  border: 2px solid #1e62f0;
-  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.25);
-  cursor: pointer;
-  transition: transform 0.1s ease;
-}
-
-input[type="range"].tf-range::-webkit-slider-thumb:active {
-  transform: scale(1.12);
-}
-
-input[type="range"].tf-range::-moz-range-thumb {
-  height: 22px;
-  width: 22px;
-  border-radius: 9999px;
-  background: #ffffff;
-  border: 2px solid #1e62f0;
-  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.25);
+  background: #6366f1;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   cursor: pointer;
 }
 
-input[type="range"].tf-range::-moz-range-track {
-  height: 8px;
+input[type="range"].tm-range::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
   border-radius: 9999px;
-  background: transparent;
+  background: #6366f1;
+  border: 2px solid #ffffff;
+  cursor: pointer;
 }
 
-/* ---------- Glassmorphism accent ---------- */
-.tf-glass {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
+/* ---------- Redaction drawing canvas cursor ---------- */
+.tm-redact-canvas {
+  cursor: crosshair;
+  touch-action: none;
 }
 
-/* ---------- Print / PDF export ---------- */
+/* ---------- Custom scrollbar for code areas ---------- */
+.tm-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  tab-size: 2;
+}
+
+/* ---------- Print styles ---------- */
 @media print {
-  .tf-no-print {
+  .tm-no-print {
     display: none !important;
   }
   body {
-    background: #ffffff;
-  }
-  .tf-print-block {
-    box-shadow: none !important;
-    border-color: #e2e8f0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
 }
