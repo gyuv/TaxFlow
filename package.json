@@ -2,7 +2,7 @@
   "name": "taxflow",
   "version": "1.0.0",
   "private": true,
-  "description": "TaskMatrix AI — a privacy-first, zero-server multi-tool web app (local PDF anonymizer, high-precision invoice engine, meeting cost ticker, and data sanitizer) built with Next.js.",
+  "description": "TaskMatrix AI v2.0 — a privacy-first, zero-server utility suite (image compressor, EXIF stripper, JWT debugger, AES-256-GCM vault, mock-data generator, SQL formatter) built with Next.js and native Web APIs.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,11 +10,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "bignumber.js": "^9.1.2",
     "lucide-react": "^0.454.0",
     "next": "14.2.35",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^3.11.174",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

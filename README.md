@@ -1,65 +1,43 @@
-# TaskMatrix AI
+# TaskMatrix AI v2.0
 
-A **production-grade, privacy-first, zero-server** multi-tool web application.
-Every module runs **100% locally in the browser** — no file, byte, or keystroke
-is ever transmitted off-device. There are no external API calls, uploads, or
-backend database roundtrips for processing user input.
+An **enterprise-grade, privacy-first, zero-server** utility suite. Every
+operation — image compression, EXIF stripping, JWT decoding, AES-256-GCM
+encryption, mock-data generation, and SQL formatting — runs **100% locally in
+the browser** using **native Web APIs** (HTML5 Canvas, the Web Crypto API,
+`TextEncoder`/`TextDecoder`, TypedArrays). There are **no external API
+endpoints and no backend pipeline** — nothing you load is ever uploaded.
 
 Built with **Next.js (App Router)**, **React**, **TypeScript**, **Tailwind
-CSS**, **Lucide React** icons, **BigNumber.js** (exact decimal math),
-**pdf-lib** (PDF export), and **PDF.js** (client-side PDF rendering).
+CSS**, and **Lucide React** icons. No processing libraries — just the platform.
 
-## Modules
+## The six utilities
 
-### A · Local PDF & Document Anonymizer
-- Drag-and-drop upload for **PDF, PNG, JPG**.
-- Pages render locally to an **HTML5 Canvas** via PDF.js (worker served
-  same-origin from `/public` — no CDN, no external fetch).
-- **Regex PII auto-detection** — emails, phone numbers, tax IDs/SSNs, and
-  credit-card numbers — mapped to page coordinates via positioned text
-  extraction, plus a free-text "redact anything containing…" field.
-- **Draw custom black-out rectangles** directly on the preview canvas.
-- **Client-side export** to a clean PDF (via pdf-lib) or PNG. Redactions are
-  **rasterized** on export, so underlying text/metadata is permanently
-  destroyed — not merely hidden.
+| Category | Tool | What it does |
+|---|---|---|
+| **Document Ops** | **Image & File Compressor** | Drag-drop PNG/JPG/WebP; quality slider, dimension scaling, and a **max-file-size** target met by binary-searching quality; live **side-by-side** original vs. compressed with a `−N% smaller` badge; client-side download. |
+| **Document Ops** | **EXIF & Metadata Stripper** | Parses the JPEG APP1/TIFF structure in JS to reveal **GPS, camera, date, author, and software** tags in a tree; one-click **Sanitize & Download** re-encodes via canvas to strip all metadata. |
+| **Dev Tools** | **JWT Debugger** | Color-coded decode — **header (red), payload (purple), signature (blue)** — with **Active/Expired** status, issued-at, not-before, and issuer claims. |
+| **Security Vault** | **AES-256-GCM Vault** | `window.crypto.subtle` with **PBKDF2-SHA256 (250k iterations)** key derivation and authenticated **AES-GCM**; encrypt/decrypt toggle, portable base64 payload (salt+IV+ciphertext), copy + toasts. |
+| **Dev Tools** | **Mock Data Generator** | Schema builder (UUID, names, email, ISO timestamp, integer, boolean, price, color, and more); generate **1–500** records; live JSON viewer, copy, and `.json` export. |
+| **Dev Tools** | **SQL Formatter** | Tokenizer-based **format/indent, minify, escape, unescape** for **Standard / MySQL / PostgreSQL**, with a real-time unbalanced-paren / unterminated-string warning banner. |
 
-### B · High-Precision Invoice & Tax Math Engine
-- Line items: description, quantity, unit price, tax %, discount %.
-- **All currency math uses BigNumber.js** with half-up rounding — no IEEE-754
-  float errors (`0.1 + 0.2 === 0.3`, not `0.30000000000000004`).
-- Live **Subtotal, Discount, grouped Tax Breakdown by rate, and Grand Total**,
-  with a 10-currency selector.
-- **Print / Save as PDF** via a self-contained printable HTML document.
-
-### C · Real-Time Executive Meeting Cost Ticker
-- Inputs: attendees, average hourly rate, currency, budget cap.
-- **Start / Pause / Resume / Reset** timer engine (drift-corrected via
-  `performance.now()`), refreshing every **100 ms**.
-- Live cash-burn counter (per second / per minute) with **green → amber → red**
-  status thresholds against your budget.
-
-### D · Structured Data & Sanitization Utility
-- **JSON → CSV** and **CSV → JSON** (RFC-4180-style quoting).
-- **JSON validate / beautify / minify** with **line & column error reporting**
-  and dynamic error-line highlighting.
-- **Line deduplicator** and **whitespace sanitizer**, with copy / reuse output.
-
-## UI / UX & Monetization
-- **TaskMatrix AI** brand with a custom SVG logo and glassmorphism header.
-- **Dark / Light mode** toggle persisted to `localStorage`, applied
-  pre-paint to avoid flash-of-wrong-theme.
-- **Tabbed navigation** — modules stay mounted, so the meeting timer keeps
-  running and a loaded document stays loaded when you switch tools.
-- **CLS-safe ad containers**: fixed-height leaderboard (728×90), sticky sidebar
-  box (300×250), plus an email lead-capture card.
-- **SEO**: injected JSON-LD `SoftwareApplication` + `FAQPage` schema, rich
-  metadata (Open Graph/Twitter/canonical), a step-by-step guide, and an
-  accessible FAQ accordion.
+## UI system
+- Persistent **glassmorphism header** — "TaskMatrix AI v2.0", dark/light toggle
+  (localStorage-persisted, applied pre-paint), and a "100% Browser Local
+  Processing" privacy badge.
+- **Left expandable sidebar** grouping the tools under *Document Ops*, *Dev
+  Tools*, and *Security Vault*, collapsible to icons on desktop and a drawer on
+  mobile. The active tool panel swaps with no page reload.
+- **CLS-safe ad layout**: reserved `min-h-[90px]` top banner, a sticky
+  `min-h-[600px] min-w-[300px]` right rail, and a native content unit between
+  the tool output and the SEO section.
+- **SEO**: a JSON-LD `SoftwareApplication` schema that reflects the selected
+  tool, rich metadata, and a per-tool technical explanation with security
+  guarantees.
 
 ## Privacy guarantee
-Open your browser's DevTools → Network tab, load a document, redact it, and
-export it: you will see **zero outbound transfer of your content**. The app
-works fully offline once loaded.
+Open DevTools → Network, use any tool, and you will see **zero outbound
+transfer of your content**. The app works fully offline once loaded.
 
 ## Getting started
 
@@ -71,25 +49,25 @@ npm run start   # serve the production build
 npm run lint    # eslint
 ```
 
-> **Note:** `public/pdf.worker.min.js` is the PDF.js worker, committed so the
-> anonymizer works out of the box. It is pinned to match `pdfjs-dist@3.11.174`;
-> if you upgrade pdfjs-dist, copy the matching worker again:
-> `cp node_modules/pdfjs-dist/build/pdf.worker.min.js public/pdf.worker.min.js`.
+## Verified
+- `npm run build` and `npm run lint` pass clean.
+- A headless-Chromium smoke test confirms the AES encrypt→decrypt round-trip
+  (and wrong-password rejection), JWT decoding, mock-data JSON output, SQL
+  formatting, and dark-mode persistence all work end-to-end in a real browser.
 
 ## Project structure
 
 ```
 app/
   layout.tsx    # metadata, theme-init script, global styles
-  page.tsx      # the entire TaskMatrix AI app (single-file, all four modules)
+  page.tsx      # the entire TaskMatrix AI v2.0 app (single-file, all six tools)
   globals.css   # Tailwind + dark mode + slider/glass/print styles
-public/
-  pdf.worker.min.js   # PDF.js worker (same-origin)
+  icon.svg      # app favicon
 ```
 
 The complete application lives in `app/page.tsx` as requested.
 
 ## Deploying
-Because there is no backend, TaskMatrix AI deploys as a static-friendly
-Next.js app to **Vercel** or **Cloudflare Pages** with zero configuration
-(`npm run build`). No environment variables or server runtime are required.
+With no backend, TaskMatrix AI v2.0 deploys to **Vercel** or **Cloudflare
+Pages** with zero configuration (`npm run build`) — no environment variables or
+server runtime required.
