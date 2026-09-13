@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* ---------- Range slider styling (cross-browser) ---------- */
+input[type="range"].tf-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #1e62f0 var(--tf-progress, 0%),
+    #e2e8f0 var(--tf-progress, 0%)
+  );
+  outline: none;
+}
+
+input[type="range"].tf-range:focus-visible {
+  box-shadow: 0 0 0 4px rgba(30, 98, 240, 0.25);
+}
+
+input[type="range"].tf-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #1e62f0;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+input[type="range"].tf-range::-webkit-slider-thumb:active {
+  transform: scale(1.12);
+}
+
+input[type="range"].tf-range::-moz-range-thumb {
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #1e62f0;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.25);
+  cursor: pointer;
+}
+
+input[type="range"].tf-range::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+/* ---------- Glassmorphism accent ---------- */
+.tf-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+
+/* ---------- Print / PDF export ---------- */
+@media print {
+  .tf-no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff;
+  }
+  .tf-print-block {
+    box-shadow: none !important;
+    border-color: #e2e8f0 !important;
+  }
+}
