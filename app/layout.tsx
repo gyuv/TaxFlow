@@ -1,44 +1,49 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-const APP_NAME = "TaskMatrix AI v2.0";
+const APP_NAME = "TaskMatrix AI";
 const DESCRIPTION =
-  "TaskMatrix AI v2.0 is a privacy-first, zero-server utility suite that runs 100% in your browser using native Web APIs: a local image/file compressor, EXIF & metadata stripper, JWT debugger, AES-256-GCM encryption vault, synthetic API mock-data generator, and SQL formatter. No uploads, no tracking, no data ever leaves your device.";
+  "TaskMatrix AI is a privacy-first, zero-server platform of 17 utilities that run 100% in your browser: PDF redactor, contract diff, legal document generator, watermark studio, invoice & tax engine, meeting cost ticker, freelance pay estimator, EXIF stripper, AES-256-GCM vault, JWT debugger, data sanitizer, SQL formatter, mock API builder, SVG optimizer, subnet calculator, image compressor, and screenshot annotator. No uploads, no tracking, no data ever leaves your device.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://taskmatrix.ai"),
   title: {
-    default: `${APP_NAME} — Local Image Compressor, EXIF Stripper, JWT & AES Tools`,
+    default: `${APP_NAME} — 17 Privacy-First Local Tools for Docs, Dev, Security & Media`,
     template: `%s | ${APP_NAME}`,
   },
   description: DESCRIPTION,
   applicationName: APP_NAME,
   keywords: [
-    "client side image compressor",
-    "browser image resizer",
+    "local pdf redactor",
+    "contract diff comparator",
+    "legal document generator",
+    "image pdf watermark tool",
+    "invoice tax calculator",
+    "meeting cost calculator",
     "exif metadata remover",
-    "strip gps from photo",
-    "jwt decoder debugger",
-    "jwt expiry checker",
     "aes 256 gcm encryption online",
-    "web crypto encrypt text",
-    "mock json data generator",
+    "jwt decoder debugger",
+    "json csv sanitizer",
     "sql formatter beautifier",
-    "privacy first developer tools",
-    "no upload offline tools",
+    "mock json data generator",
+    "svg optimizer online",
+    "subnet cidr calculator",
+    "client side image compressor",
+    "screenshot annotator markup",
+    "privacy first offline tools",
   ],
   authors: [{ name: APP_NAME }],
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: APP_NAME,
-    title: `${APP_NAME} — Privacy-First Local Developer & Security Toolkit`,
+    title: `${APP_NAME} — 17 Privacy-First Local Tools`,
     description: DESCRIPTION,
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: `${APP_NAME} — Privacy-First Local Developer & Security Toolkit`,
+    title: `${APP_NAME} — 17 Privacy-First Local Tools`,
     description: DESCRIPTION,
   },
   robots: { index: true, follow: true },
