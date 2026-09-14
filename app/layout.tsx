@@ -3,17 +3,20 @@ import "./globals.css";
 
 const APP_NAME = "TaskMatrix AI";
 const DESCRIPTION =
-  "TaskMatrix AI is a privacy-first, zero-server platform of 17 utilities that run 100% in your browser: PDF redactor, contract diff, legal document generator, watermark studio, invoice & tax engine, meeting cost ticker, freelance pay estimator, EXIF stripper, AES-256-GCM vault, JWT debugger, data sanitizer, SQL formatter, mock API builder, SVG optimizer, subnet calculator, image compressor, and screenshot annotator. No uploads, no tracking, no data ever leaves your device.";
+  "TaskMatrix AI is a privacy-first, zero-server platform of 18 utilities that run 100% in your browser: PDF redactor, an advanced PDF editor with text & e-signature, contract diff, legal document generator, watermark studio, invoice & tax engine, meeting cost ticker, freelance pay estimator, EXIF stripper, AES-256-GCM vault, JWT debugger, data sanitizer, SQL formatter, mock API builder, SVG optimizer, subnet calculator, image compressor, and screenshot annotator. No uploads, no tracking, no data ever leaves your device.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://taskmatrix.ai"),
   title: {
-    default: `${APP_NAME} — 17 Privacy-First Local Tools for Docs, Dev, Security & Media`,
+    default: `${APP_NAME} — 18 Privacy-First Local Tools for Docs, Dev, Security & Media`,
     template: `%s | ${APP_NAME}`,
   },
   description: DESCRIPTION,
   applicationName: APP_NAME,
   keywords: [
+    "pdf editor online free",
+    "sign pdf in browser",
+    "add text to pdf",
     "local pdf redactor",
     "contract diff comparator",
     "legal document generator",
@@ -37,13 +40,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: APP_NAME,
-    title: `${APP_NAME} — 17 Privacy-First Local Tools`,
+    title: `${APP_NAME} — 18 Privacy-First Local Tools`,
     description: DESCRIPTION,
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: `${APP_NAME} — 17 Privacy-First Local Tools`,
+    title: `${APP_NAME} — 18 Privacy-First Local Tools`,
     description: DESCRIPTION,
   },
   robots: { index: true, follow: true },

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * TaskMatrix AI — Enterprise multi-tool platform (17 utilities).
+ * TaskMatrix AI — Enterprise multi-tool platform (18 utilities).
  * ==========================================================================
  * A privacy-first, zero-server suite. Every tool — PDF redaction, invoicing,
  * meeting-cost tracking, data sanitization, image compression, EXIF stripping,
@@ -87,10 +87,13 @@ import {
   Router,
   RotateCcw,
   Scale,
+  Calendar,
   Scan,
   ScanLine,
   ScrollText,
   Shield,
+  Signature,
+  SquarePen,
   ShieldCheck,
   Sparkles,
   Square,
@@ -4604,10 +4607,567 @@ function SubnetCalculator() {
   );
 }
 /* ==========================================================================
+ * MODULE M — Advanced PDF Editor (text, signature, date, image, checkmark)
+ * ========================================================================== */
+interface EditorPage { dataUrl: string; viewW: number; viewH: number; }
+type AnnType = "text" | "sign" | "image" | "date" | "check";
+interface Annot {
+  id: string;
+  page: number;
+  type: AnnType;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text?: string;
+  fontSize?: number;
+  color?: string;
+  dataUrl?: string;
+  mime?: string;
+}
+
+function hexToRgb01(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return [0, 0, 0];
+  const n = parseInt(m[1], 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function PdfEditor() {
+  const toast = useToast();
+  const [origBytes, setOrigBytes] = useState<Uint8Array | null>(null);
+  const [pages, setPages] = useState<EditorPage[]>([]);
+  const [annots, setAnnots] = useState<Annot[]>([]);
+  const [current, setCurrent] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [tool, setTool] = useState<"select" | AnnType>("select");
+  const [fileName, setFileName] = useState("document");
+  const [busy, setBusy] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
+
+  const [textColor, setTextColor] = useState("#111827");
+  const [fontSize, setFontSize] = useState(18);
+
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ id: string; dx: number; dy: number } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const page = pages[current];
+  const selected = annots.find((a) => a.id === selectedId) || null;
+
+  /* ---- Load & render ---- */
+  const loadPdf = async (file: File) => {
+    setBusy(true);
+    try {
+      setFileName(file.name.replace(/\.pdf$/i, "") || "document");
+      const raw = new Uint8Array(await file.arrayBuffer());
+      setOrigBytes(raw.slice());
+      const pdfjs: any = await import("pdfjs-dist");
+      if (!pdfWorkerConfigured) {
+        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.js";
+        pdfWorkerConfigured = true;
+      }
+      const doc = await pdfjs.getDocument({ data: raw }).promise;
+      const out: EditorPage[] = [];
+      const scale = 1.4;
+      for (let i = 1; i <= doc.numPages; i++) {
+        const pg = await doc.getPage(i);
+        const vp = pg.getViewport({ scale });
+        const c = document.createElement("canvas");
+        c.width = Math.ceil(vp.width);
+        c.height = Math.ceil(vp.height);
+        await pg.render({ canvasContext: c.getContext("2d")!, viewport: vp }).promise;
+        out.push({ dataUrl: c.toDataURL("image/png"), viewW: c.width, viewH: c.height });
+      }
+      setPages(out);
+      setAnnots([]);
+      setCurrent(0);
+      setSelectedId(null);
+    } catch {
+      toast("Could not open this PDF.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* ---- Add annotations ---- */
+  const addAnnot = (a: Omit<Annot, "id" | "page">) => {
+    const id = `an-${Date.now()}-${Math.round(Math.random() * 1e4)}`;
+    setAnnots((prev) => [...prev, { ...a, id, page: current }]);
+    setSelectedId(id);
+    setTool("select");
+  };
+
+  const centerXY = (w: number, h: number) => ({
+    x: Math.max(8, ((page?.viewW ?? 400) - w) / 2),
+    y: Math.max(8, ((page?.viewH ?? 400) - h) / 2),
+  });
+
+  const placeText = (text: string, preset?: Partial<Annot>) => {
+    const w = Math.max(80, text.length * fontSize * 0.6);
+    const h = fontSize * 1.4;
+    addAnnot({ type: "text", ...centerXY(w, h), w, h, text, fontSize, color: textColor, ...preset });
+  };
+
+  const onPageClick = (e: React.MouseEvent) => {
+    if (!page) return;
+    if (e.target !== pageRef.current && !(e.target as HTMLElement).dataset.pagebg) return;
+    const rect = pageRef.current!.getBoundingClientRect();
+    const ratio = page.viewW / rect.width;
+    const x = (e.clientX - rect.left) * ratio;
+    const y = (e.clientY - rect.top) * ratio;
+    if (tool === "text") {
+      const w = 160, h = fontSize * 1.4;
+      addAnnot({ type: "text", x, y, w, h, text: "Double-click to edit", fontSize, color: textColor });
+    } else if (tool === "date") {
+      const t = new Date().toLocaleDateString();
+      const w = Math.max(90, t.length * fontSize * 0.6), h = fontSize * 1.4;
+      addAnnot({ type: "date", x, y, w, h, text: t, fontSize, color: textColor });
+    } else if (tool === "check") {
+      const w = fontSize * 1.4, h = fontSize * 1.4;
+      addAnnot({ type: "check", x, y, w, h, text: "✓", fontSize: fontSize * 1.3, color: textColor });
+    }
+  };
+
+  /* ---- Dragging ---- */
+  const onAnnotDown = (e: React.PointerEvent, a: Annot) => {
+    e.stopPropagation();
+    setSelectedId(a.id);
+    const rect = pageRef.current!.getBoundingClientRect();
+    const ratio = page!.viewW / rect.width;
+    dragRef.current = {
+      id: a.id,
+      dx: (e.clientX - rect.left) * ratio - a.x,
+      dy: (e.clientY - rect.top) * ratio - a.y,
+    };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onAnnotMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || !page) return;
+    const rect = pageRef.current!.getBoundingClientRect();
+    const ratio = page.viewW / rect.width;
+    const nx = (e.clientX - rect.left) * ratio - d.dx;
+    const ny = (e.clientY - rect.top) * ratio - d.dy;
+    setAnnots((prev) =>
+      prev.map((a) =>
+        a.id === d.id
+          ? { ...a, x: Math.max(0, Math.min(page.viewW - 10, nx)), y: Math.max(0, Math.min(page.viewH - 10, ny)) }
+          : a
+      )
+    );
+  };
+  const onAnnotUp = () => { dragRef.current = null; };
+
+  const updateSel = (patch: Partial<Annot>) =>
+    setAnnots((prev) => prev.map((a) => (a.id === selectedId ? { ...a, ...patch } : a)));
+  const deleteSel = () => {
+    setAnnots((prev) => prev.filter((a) => a.id !== selectedId));
+    setSelectedId(null);
+  };
+
+  const onImageFile = async (f?: File) => {
+    if (!f) return;
+    const dataUrl = await readAsDataURL(f);
+    const img = await loadImageEl(dataUrl);
+    const maxW = 220;
+    const w = Math.min(maxW, img.naturalWidth);
+    const h = (img.naturalHeight / img.naturalWidth) * w;
+    addAnnot({ type: "image", ...centerXY(w, h), w, h, dataUrl, mime: f.type || "image/png" });
+  };
+
+  const addSignature = (dataUrl: string) => {
+    const w = 220, h = 90;
+    addAnnot({ type: "sign", ...centerXY(w, h), w, h, dataUrl, mime: "image/png" });
+    setSignOpen(false);
+  };
+
+  /* ---- Export ---- */
+  const exportPdf = async () => {
+    if (!origBytes) return;
+    setBusy(true);
+    try {
+      const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+      const doc = await PDFDocument.load(origBytes);
+      const font = await doc.embedFont(StandardFonts.Helvetica);
+      const docPages = doc.getPages();
+      for (const a of annots) {
+        const pdfPage = docPages[a.page];
+        if (!pdfPage) continue;
+        const pw = pdfPage.getWidth();
+        const S = pages[a.page].viewW / pw;
+        const ph = pdfPage.getHeight();
+        if (a.type === "text" || a.type === "date" || a.type === "check") {
+          const size = (a.fontSize ?? 18) / S;
+          const [r, g, b] = hexToRgb01(a.color ?? "#111827");
+          const topY = ph - a.y / S;
+          (a.text ?? "").split("\n").forEach((line, i) => {
+            pdfPage.drawText(line, {
+              x: a.x / S,
+              y: topY - size * 0.8 - i * size * 1.2,
+              size,
+              font,
+              color: rgb(r, g, b),
+            });
+          });
+        } else if ((a.type === "image" || a.type === "sign") && a.dataUrl) {
+          const bytes = await fetch(a.dataUrl).then((res) => res.arrayBuffer());
+          const img = a.mime === "image/jpeg" ? await doc.embedJpg(bytes) : await doc.embedPng(bytes);
+          const w = a.w / S, h = a.h / S;
+          pdfPage.drawImage(img, { x: a.x / S, y: ph - a.y / S - h, width: w, height: h });
+        }
+      }
+      const bytes = await doc.save();
+      const buffer = new ArrayBuffer(bytes.byteLength);
+      new Uint8Array(buffer).set(bytes);
+      downloadBlob(new Blob([buffer], { type: "application/pdf" }), `${fileName}-edited.pdf`);
+      toast("Edited PDF exported");
+    } catch {
+      toast("Export failed.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const TOOLBAR: { t: "select" | AnnType; icon: React.ReactNode; label: string }[] = [
+    { t: "select", icon: <MousePointer className="h-4 w-4" />, label: "Select / Move" },
+    { t: "text", icon: <Type className="h-4 w-4" />, label: "Text" },
+    { t: "sign", icon: <Signature className="h-4 w-4" />, label: "Sign" },
+    { t: "date", icon: <Calendar className="h-4 w-4" />, label: "Date" },
+    { t: "check", icon: <Check className="h-4 w-4" />, label: "Check" },
+    { t: "image", icon: <ImageIcon className="h-4 w-4" />, label: "Image" },
+  ];
+
+  return (
+    <div className={`${CARD} p-6`}>
+      <ToolHeader
+        icon={<SquarePen className="h-5 w-5" />}
+        title="Advanced PDF Editor"
+        subtitle="Add text, signatures, dates, checkmarks & images to a PDF — exported locally."
+      />
+
+      {pages.length === 0 ? (
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
+          <Upload className="h-10 w-10 text-slate-400" />
+          <p className="mt-3 font-medium text-slate-700 dark:text-slate-200">
+            {busy ? "Rendering…" : "Upload a PDF to edit"}
+          </p>
+          <p className="text-xs text-slate-400">Your file never leaves the browser</p>
+          <input
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && loadPdf(e.target.files[0])}
+          />
+        </label>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+          {/* Toolbar + properties */}
+          <div className="space-y-4 lg:col-span-1">
+            <div className="grid grid-cols-3 gap-2">
+              {TOOLBAR.map((b) => (
+                <button
+                  key={b.t}
+                  type="button"
+                  onClick={() => {
+                    if (b.t === "sign") setSignOpen(true);
+                    else if (b.t === "image") imageInputRef.current?.click();
+                    else setTool(b.t);
+                  }}
+                  title={b.label}
+                  className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-[11px] font-medium transition ${
+                    tool === b.t
+                      ? "border-indigo-600 bg-indigo-600 text-white"
+                      : "border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {b.icon}
+                  {b.label}
+                </button>
+              ))}
+            </div>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onImageFile(e.target.files?.[0])}
+            />
+
+            <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Text style
+              </p>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  Size
+                  <input
+                    type="number"
+                    min={6}
+                    max={96}
+                    value={fontSize}
+                    onChange={(e) => {
+                      const v = Math.min(96, Math.max(6, Number(e.target.value) || 18));
+                      setFontSize(v);
+                      if (selected && (selected.type === "text" || selected.type === "date" || selected.type === "check"))
+                        updateSel({ fontSize: v });
+                    }}
+                    className={`${INPUT} w-16 py-1`}
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  Color
+                  <input
+                    type="color"
+                    value={textColor}
+                    onChange={(e) => {
+                      setTextColor(e.target.value);
+                      if (selected && selected.type !== "image" && selected.type !== "sign")
+                        updateSel({ color: e.target.value });
+                    }}
+                    className="h-8 w-10 rounded border border-slate-300"
+                  />
+                </label>
+              </div>
+              <p className="mt-2 text-[11px] text-slate-400">
+                Pick a tool, then click on the page to place it.
+              </p>
+            </div>
+
+            {selected && (
+              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/30">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">
+                  Selected {selected.type}
+                </p>
+                {(selected.type === "text" || selected.type === "date") && (
+                  <textarea
+                    value={selected.text ?? ""}
+                    onChange={(e) => updateSel({ text: e.target.value })}
+                    className={`${INPUT} h-20 resize-y`}
+                    aria-label="Edit text"
+                  />
+                )}
+                {(selected.type === "image" || selected.type === "sign") && (
+                  <label className="block text-xs text-slate-600 dark:text-slate-300">
+                    Width
+                    <input
+                      type="range"
+                      min={40}
+                      max={page?.viewW ?? 600}
+                      value={selected.w}
+                      onChange={(e) => {
+                        const nw = Number(e.target.value);
+                        updateSel({ w: nw, h: (selected.h / selected.w) * nw });
+                      }}
+                      className="tm-range mt-1 w-full"
+                    />
+                  </label>
+                )}
+                <button type="button" className={`${BTN_GHOST} mt-2 w-full`} onClick={deleteSel}>
+                  <Trash2 className="h-4 w-4" /> Delete
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <button type="button" className={`${BTN_PRIMARY} w-full`} onClick={exportPdf} disabled={busy}>
+                <Download className="h-4 w-4" /> {busy ? "Exporting…" : "Export edited PDF"}
+              </button>
+              <button
+                type="button"
+                className={`${BTN_GHOST} w-full`}
+                onClick={() => { setPages([]); setAnnots([]); setOrigBytes(null); }}
+              >
+                <X className="h-4 w-4" /> Close document
+              </button>
+            </div>
+          </div>
+
+          {/* Page canvas */}
+          <div className="lg:col-span-3">
+            {pages.length > 1 && (
+              <div className="mb-3 flex items-center justify-center gap-2">
+                <button type="button" className={BTN_GHOST} onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}>Prev</button>
+                <span className="text-sm text-slate-500">Page {current + 1} / {pages.length}</span>
+                <button type="button" className={BTN_GHOST} onClick={() => setCurrent((c) => Math.min(pages.length - 1, c + 1))} disabled={current === pages.length - 1}>Next</button>
+              </div>
+            )}
+            <div className="overflow-auto rounded-xl bg-slate-200 p-4 dark:bg-slate-800/50">
+              {page && (
+                <div
+                  ref={pageRef}
+                  data-pagebg="1"
+                  onClick={onPageClick}
+                  className="relative mx-auto shadow-lg"
+                  style={{
+                    width: page.viewW,
+                    height: page.viewH,
+                    backgroundImage: `url(${page.dataUrl})`,
+                    backgroundSize: "100% 100%",
+                    cursor: tool === "select" ? "default" : "crosshair",
+                  }}
+                >
+                  {annots
+                    .filter((a) => a.page === current)
+                    .map((a) => (
+                      <div
+                        key={a.id}
+                        onPointerDown={(e) => onAnnotDown(e, a)}
+                        onPointerMove={onAnnotMove}
+                        onPointerUp={onAnnotUp}
+                        onDoubleClick={() => setSelectedId(a.id)}
+                        style={{
+                          position: "absolute",
+                          left: a.x,
+                          top: a.y,
+                          width: a.w,
+                          height: a.h,
+                          color: a.color,
+                          fontSize: a.fontSize,
+                          lineHeight: 1.2,
+                          touchAction: "none",
+                          cursor: "move",
+                        }}
+                        className={`select-none whitespace-pre-wrap font-sans ${
+                          selectedId === a.id ? "outline outline-2 outline-indigo-500" : ""
+                        }`}
+                      >
+                        {a.type === "image" || a.type === "sign" ? (
+                          // eslint-disable-next-line jsx-a11y/alt-text
+                          <img src={a.dataUrl} draggable={false} style={{ width: "100%", height: "100%", pointerEvents: "none" }} />
+                        ) : (
+                          a.text
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              Text is written as real, selectable PDF text; signatures and images are embedded — the original PDF is preserved underneath.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {signOpen && <SignatureModal onClose={() => setSignOpen(false)} onSave={addSignature} />}
+    </div>
+  );
+}
+
+function SignatureModal({ onClose, onSave }: { onClose: () => void; onSave: (dataUrl: string) => void }) {
+  const [mode, setMode] = useState<"draw" | "type">("draw");
+  const [typed, setTyped] = useState("");
+  const [color, setColor] = useState("#1e3a8a");
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawing = useRef(false);
+  const hasInk = useRef(false);
+
+  const ctx = () => canvasRef.current!.getContext("2d")!;
+  const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const c = canvasRef.current!;
+    const r = c.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * c.width, y: ((e.clientY - r.top) / r.height) * c.height };
+  };
+  const down = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    drawing.current = true;
+    const { x, y } = pos(e);
+    const c = ctx();
+    c.strokeStyle = color;
+    c.lineWidth = 2.5;
+    c.lineCap = "round";
+    c.lineJoin = "round";
+    c.beginPath();
+    c.moveTo(x, y);
+  };
+  const move = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current) return;
+    const { x, y } = pos(e);
+    const c = ctx();
+    c.lineTo(x, y);
+    c.stroke();
+    hasInk.current = true;
+  };
+  const up = () => { drawing.current = false; };
+  const clear = () => {
+    const c = canvasRef.current!;
+    ctx().clearRect(0, 0, c.width, c.height);
+    hasInk.current = false;
+  };
+
+  const save = () => {
+    const c = canvasRef.current!;
+    if (mode === "type") {
+      const cx = ctx();
+      cx.clearRect(0, 0, c.width, c.height);
+      cx.fillStyle = color;
+      cx.font = "48px 'Segoe Script', 'Brush Script MT', cursive";
+      cx.textBaseline = "middle";
+      cx.fillText(typed || "Signature", 20, c.height / 2);
+    } else if (!hasInk.current) {
+      return;
+    }
+    onSave(c.toDataURL("image/png"));
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">Add signature</h3>
+          <button type="button" onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Close">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mb-3 inline-flex rounded-lg border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+          <button type="button" onClick={() => setMode("draw")} className={`rounded px-3 py-1 text-xs font-semibold ${mode === "draw" ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-900" : "text-slate-500"}`}>Draw</button>
+          <button type="button" onClick={() => setMode("type")} className={`rounded px-3 py-1 text-xs font-semibold ${mode === "type" ? "bg-white text-indigo-600 shadow-sm dark:bg-slate-900" : "text-slate-500"}`}>Type</button>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+            Ink color
+            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-8 w-10 rounded border border-slate-300" />
+          </label>
+          {mode === "draw" && (
+            <button type="button" className={`${BTN_GHOST} ml-auto !py-1`} onClick={clear}>Clear</button>
+          )}
+        </div>
+        {mode === "type" && (
+          <input
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="Type your name"
+            className={`${INPUT} mt-3`}
+            style={{ fontFamily: "'Segoe Script','Brush Script MT',cursive", fontSize: 22 }}
+          />
+        )}
+        <canvas
+          ref={canvasRef}
+          width={460}
+          height={180}
+          className="tm-redact-canvas mt-3 w-full rounded-lg border border-slate-300 bg-white dark:border-slate-600"
+          onPointerDown={down}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerLeave={up}
+        />
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" className={BTN_GHOST} onClick={onClose}>Cancel</button>
+          <button type="button" className={BTN_PRIMARY} onClick={save}>
+            <Signature className="h-4 w-4" /> Add to page
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==========================================================================
  * Tool registry + categorized sidebar + application shell.
  * ========================================================================== */
 type ToolId =
-  | "pdf" | "diff" | "legal" | "watermark"
+  | "pdf" | "pdfedit" | "diff" | "legal" | "watermark"
   | "invoice" | "meeting" | "freelance"
   | "exif" | "aes" | "jwt"
   | "data" | "sql" | "mock" | "svg" | "subnet"
@@ -4633,6 +5193,8 @@ interface ToolDef {
 const TOOLS: ToolDef[] = [
   { id: "pdf", name: "PDF Redactor", category: "Document & Legal Ops", icon: <Shield className="h-4 w-4" />, component: <PdfAnonymizer />,
     seoTitle: "Local PDF redaction that destroys, not hides", seoBody: "Renders PDFs to canvas with PDF.js, auto-detects PII by regex, lets you draw black-out boxes, and exports a rasterized PDF so the underlying text is permanently gone. Nothing is uploaded." },
+  { id: "pdfedit", name: "PDF Editor", category: "Document & Legal Ops", icon: <SquarePen className="h-4 w-4" />, component: <PdfEditor />,
+    seoTitle: "Advanced PDF editor with text & e-signature", seoBody: "Upload a PDF and add real, selectable text, a hand-drawn or typed e-signature, today's date, checkmarks, and images anywhere on any page. PDF.js renders each page to a canvas for editing, and pdf-lib writes your additions onto the original document — exporting a genuine PDF with the source content preserved underneath. Everything runs in your browser, so signed contracts never touch a server." },
   { id: "diff", name: "Contract Diff", category: "Document & Legal Ops", icon: <GitCompare className="h-4 w-4" />, component: <ContractDiff />,
     seoTitle: "How the contract diff engine works", seoBody: "An in-browser longest-common-subsequence algorithm compares two documents line by line, then word by word inside changed lines, colour-coding additions (green), deletions (red), and modifications (yellow) in split or unified views with full edit statistics." },
   { id: "legal", name: "Legal Generator", category: "Document & Legal Ops", icon: <FileSignature className="h-4 w-4" />, component: <LegalGenerator />,
@@ -4769,7 +5331,7 @@ export default function TaskMatrixPlatform() {
             </div>
             <div className="flex items-center gap-2">
               <span className="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300 md:inline-flex">
-                <Lock className="h-3 w-3" /> 17 tools · Zero-server
+                <Lock className="h-3 w-3" /> 18 tools · Zero-server
               </span>
               <button type="button" onClick={toggle} aria-label="Toggle dark mode"
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
@@ -4824,7 +5386,7 @@ export default function TaskMatrixPlatform() {
                 {active.name}
               </h1>
               <p className="mt-1 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-                One of 17 enterprise utilities in TaskMatrix AI — every byte processed locally, nothing uploaded.
+                One of 18 enterprise utilities in TaskMatrix AI — every byte processed locally, nothing uploaded.
               </p>
             </section>
 
@@ -4877,7 +5439,7 @@ export default function TaskMatrixPlatform() {
               <span className="text-sm font-bold text-slate-900 dark:text-white">TaskMatrix AI</span>
             </div>
             <p className="text-center text-xs text-slate-500">
-              © {new Date().getFullYear()} · 17 utilities · 100% browser-local · No data collected, ever.
+              © {new Date().getFullYear()} · 18 utilities · 100% browser-local · No data collected, ever.
             </p>
           </div>
         </footer>

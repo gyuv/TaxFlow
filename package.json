@@ -2,7 +2,7 @@
   "name": "taxflow",
   "version": "1.0.0",
   "private": true,
-  "description": "TaskMatrix AI — a privacy-first, zero-server platform of 17 browser-local utilities across Document & Legal, Finance, Security, Developer, and Media categories, built with Next.js, native Web APIs, BigNumber.js, and PDF.js/pdf-lib.",
+  "description": "TaskMatrix AI — a privacy-first, zero-server platform of 18 browser-local utilities (including an advanced PDF editor with e-signatures) across Document & Legal, Finance, Security, Developer, and Media categories, built with Next.js, native Web APIs, BigNumber.js, and PDF.js/pdf-lib.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

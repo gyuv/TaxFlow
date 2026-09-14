@@ -1,7 +1,7 @@
 # TaskMatrix AI
 
 An **enterprise-grade, privacy-first, zero-server** multi-tool platform. All
-**17 utilities run 100% locally in the browser** using native Web APIs (HTML5
+**18 utilities run 100% locally in the browser** using native Web APIs (HTML5
 Canvas, the Web Crypto API, TypedArrays, DOMParser), plus **BigNumber.js** for
 exact money math and **PDF.js / pdf-lib** for local PDF handling. There are
 **no external API endpoints and no backend pipeline** — nothing you load is
@@ -14,6 +14,7 @@ CSS**, and **Lucide React** icons.
 
 ### 📄 Document & Legal Ops
 - **PDF Redactor** — render PDFs to canvas (PDF.js), auto-detect PII by regex, draw black-out boxes, export a **rasterized** PDF so redacted text is destroyed.
+- **PDF Editor** — add real, selectable **text**, a drawn or typed **e-signature**, dates, checkmarks, and images onto any page; pdf-lib writes them onto the original PDF (source preserved underneath) and exports a genuine PDF.
 - **Contract Diff** — LCS line + word diffing with green/red/yellow coding, split/unified views, and edit statistics.
 - **Legal Generator** — NDA, MSA, and Work-for-Hire templates with dynamic fields, live preview, copy, and print-to-PDF.
 - **Watermark Studio** — text or logo watermark across images **and PDFs**, with opacity, angle, size, color, and tiling; live canvas preview.
@@ -68,19 +69,22 @@ npm run lint    # eslint
 > `pdfjs-dist@3.11.174`), committed so the PDF tools work out of the box.
 
 ## Verified
-- `npm run build` and `npm run lint` pass clean (17 tools, ~50 kB page; PDF.js
+- `npm run build` and `npm run lint` pass clean (18 tools, ~55 kB page; PDF.js
   and pdf-lib are code-split out of the initial bundle).
-- A headless-Chromium smoke test confirms the sidebar lists all 17 tools and
+- A headless-Chromium smoke test confirms the sidebar lists all 18 tools and
   that the subnet calculator, SVG optimizer, contract diff, legal generator,
   freelance estimator, screenshot annotator, AES round-trip, invoice engine,
   and meeting ticker all work end-to-end with no console errors.
+- A dedicated PDF-editor test uploads a generated PDF, places text, a date, and
+  a drawn signature, exports it, and validates the result is a genuine 1-page
+  PDF that grew with the embedded annotations.
 
 ## Project structure
 
 ```
 app/
   layout.tsx    # metadata, theme-init script, global styles
-  page.tsx      # the entire 17-tool platform (single file)
+  page.tsx      # the entire 18-tool platform (single file)
   globals.css   # Tailwind + dark mode + slider/glass/print styles
   icon.svg      # app favicon
 public/
